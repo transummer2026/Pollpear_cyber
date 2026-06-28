@@ -16,13 +16,7 @@ jobs:
 
   ci:
     needs: trigger
-    uses: transummer2026/.github/.github/workflows/ci-service.yml@main
-    with:
-      service_name: cyber
-      lint_cmd: echo "no lint"
-      test_cmd: echo "no tests"
-      build_cmd: echo "no build"
-      coverage_threshold: 0
+    uses: transummer2026/.github/.github/workflows/ci-cyber.yml@main
     secrets:
       OTEL_ENDPOINT: ${{ secrets.OTEL_ENDPOINT }}
       TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
