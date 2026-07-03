@@ -20,4 +20,5 @@ jobs:
       OTEL_ENDPOINT: ${{ secrets.OTEL_ENDPOINT }}
       TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
       DISCORD_WEBHOOK_REPO: ${{ secrets.DISCORD_WEBHOOK_CYBER }}
-      DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+      APP_CLIENT_ID: ${{ secrets.APP_CLIENT_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
