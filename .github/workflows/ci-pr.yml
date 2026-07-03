@@ -1,27 +1,28 @@
-name: CI
+name: CI PR
+
+# CI3 — validation sur PR vers dev (titre PR, commitlint, secret scan,
+# merge-gate)
 
 on:
-  push:
-    branches: ["**"]
+  pull_request:
+    branches: [dev, main, staging]
   repository_dispatch:
     types: [ci-trigger]
   workflow_dispatch:
 
-jobs:
-  trigger:
-    name: Trigger
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "CI cyber déclenché"
+concurrency:
+  group: ci-pr-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   ci:
-    needs: trigger
     uses: transummer2026/.github/.github/workflows/ci-service.yml@main
     with:
       service_name: cyber
       lint_cmd: echo "no lint"
       test_cmd: echo "no tests"
       build_cmd: echo "no build"
+      skip_build: true
       coverage_threshold: 0
     secrets:
       OTEL_ENDPOINT: ${{ secrets.OTEL_ENDPOINT }}

@@ -1,0 +1,23 @@
+name: CI Branch
+
+# CI1 — feedback rapide (commitlint + secret scan)
+
+on:
+  push:
+    branches-ignore: [dev, main, staging]
+
+concurrency:
+  group: ci-branch-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: transummer2026/.github/.github/workflows/ci-service-branch.yml@main
+    with:
+      service_name: cyber
+      lint_cmd: echo "no lint"
+    secrets:
+      OTEL_ENDPOINT: ${{ secrets.OTEL_ENDPOINT }}
+      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      DISCORD_WEBHOOK_REPO: ${{ secrets.DISCORD_WEBHOOK_CYBER }}
+      DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}

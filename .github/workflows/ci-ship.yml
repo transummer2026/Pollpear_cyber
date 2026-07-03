@@ -1,0 +1,26 @@
+name: CI Ship
+
+# CI2 — chemin "ship" sur push dev (post-merge, dev protégée) : release,
+# dispatch super-repo, update submodule
+
+on:
+  push:
+    branches: ["dev"]
+
+concurrency:
+  group: ci-ship-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ship:
+    uses: transummer2026/.github/.github/workflows/ci-services-push.yml@main
+    with:
+      service_name: cyber
+      skip_build: true
+    secrets:
+      OTEL_ENDPOINT: ${{ secrets.OTEL_ENDPOINT }}
+      TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      DISCORD_WEBHOOK_REPO: ${{ secrets.DISCORD_WEBHOOK_CYBER }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      DISPATCH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+      SEMANTIC_TOKEN: ${{ secrets.SEMANTIC_TOKEN }}
