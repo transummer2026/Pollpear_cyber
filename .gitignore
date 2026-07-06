@@ -95,3 +95,5 @@ Sessionx.vim
 tags
 # Persistent undo
 [._]*.un~
+git
+note.md
