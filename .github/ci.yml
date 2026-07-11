@@ -8,6 +8,9 @@ on:
   workflow_dispatch:
 jobs:
   ci:
+    permissions:
+      contents: read
+      pull-requests: read
     uses: transummer2026/.github/.github/workflows/ci-service.yml@main
     with:
       service_name: cyber
