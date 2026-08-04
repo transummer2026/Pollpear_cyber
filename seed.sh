@@ -54,8 +54,7 @@ WS_PING_INTERVAL="${WS_PING_INTERVAL:-25000}"
 WS_PING_TIMEOUT="${WS_PING_TIMEOUT:-20000}"
 WS_MAX_PAYLOAD="${WS_MAX_PAYLOAD:-1000000}"
 
-# pollpear-grafana retiré : Grafana ne fait jamais de login AppRole (image stock, creds via .env)
-SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-prometheus pollpear-frontend"
+SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-grafana pollpear-prometheus pollpear-frontend"
 
 until vault status >/dev/null 2>&1; do sleep 1; done
 
