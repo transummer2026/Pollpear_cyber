@@ -45,6 +45,8 @@ GARAGE_S3_REGION="${GARAGE_S3_REGION:-garage}"
 GARAGE_S3_BUCKET="${GARAGE_S3_BUCKET:-pollpear-uploads}"
 GARAGE_S3_ACCESS_KEY="${GARAGE_S3_ACCESS_KEY:-CHANGE-ME}"
 GARAGE_S3_SECRET_KEY="${GARAGE_S3_SECRET_KEY:-CHANGE-ME}"
+GARAGE_RPC_SECRET="${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is not set in .env}"
+GARAGE_ADMIN_TOKEN="${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is not set in .env}"
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
@@ -54,7 +56,7 @@ WS_PING_INTERVAL="${WS_PING_INTERVAL:-25000}"
 WS_PING_TIMEOUT="${WS_PING_TIMEOUT:-20000}"
 WS_MAX_PAYLOAD="${WS_MAX_PAYLOAD:-1000000}"
 
-SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-grafana pollpear-prometheus pollpear-frontend"
+SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-postgres-exporter pollpear-grafana pollpear-garage pollpear-prometheus pollpear-frontend"
 
 until vault status >/dev/null 2>&1; do sleep 1; done
 
@@ -72,6 +74,7 @@ vault kv put secret/pollpear/oauth/github client_id="$OAUTH_GITHUB_CLIENT_ID" cl
 vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_secret="$OAUTH_42_CLIENT_SECRET" redirect_uri="$OAUTH_42_REDIRECT_URI"
 vault kv put secret/pollpear/mail host="$MAIL_HOST" port="$MAIL_PORT" user="$MAIL_USER" pass="$MAIL_PASS" from="$MAIL_FROM"
 vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" url="$GARAGE_S3_URL" region="$GARAGE_S3_REGION" bucket="$GARAGE_S3_BUCKET" access_key="$GARAGE_S3_ACCESS_KEY" secret_key="$GARAGE_S3_SECRET_KEY" uploads_host="$GARAGE_S3_UPLOADS_HOST"
+vault kv put secret/pollpear/garage rpc_secret="$GARAGE_RPC_SECRET" admin_token="$GARAGE_ADMIN_TOKEN"
 vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL" backend_port="$BACKEND_PORT"
 vault kv put secret/pollpear/ws path="$WS_PATH" ping_interval="$WS_PING_INTERVAL" ping_timeout="$WS_PING_TIMEOUT" max_payload="$WS_MAX_PAYLOAD"
 # secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
