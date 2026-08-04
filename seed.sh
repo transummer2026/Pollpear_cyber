@@ -1,7 +1,15 @@
 #!/bin/sh
 set -eu
 
-export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
+DOTENV_FILE="${DOTENV_FILE:-/run/secrets/dotenv}"
+if [ -f "$DOTENV_FILE" ]; then
+  set -a
+  . "$DOTENV_FILE"
+  set +a
+fi
+
+export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_TOKEN="${VAULT_TOKEN:-${VAULT_ROOT_TOKEN:-}}"
 : "${VAULT_TOKEN:?VAULT_TOKEN requis}"
 POLICY_DIR="${POLICY_DIR:-/vault/policies}"
 APPROLE_DIR="${APPROLE_DIR:-/vault/approle}"
@@ -12,9 +20,8 @@ POSTGRES_PASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set in .env}"
 
 NESTJS_PEPPER="${NESTJS_PEPPER:?NESTJS_PEPPER is not set in .env}"
 
-# GRAFANA_USER/GRAFANA_PASSWORD: Grafana lit ses creds directement depuis .env (compose.monitor.yml), pas depuis Vault
-# GRAFANA_USER="${GRAFANA_USER:-admin}"
-# GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
+GRAFANA_USER="${GRAFANA_USER:-admin}"
+GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
 
 BACKEND_URL="${BACKEND_URL:-http://backend:3000}"
 BACKEND_PORT="${BACKEND_PORT:-3000}"
@@ -60,6 +67,8 @@ SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpe
 
 until vault status >/dev/null 2>&1; do sleep 1; done
 
+vault audit list 2>/dev/null | grep -q 'file/' || vault audit enable file file_path=/vault/logs/audit.log
+
 vault secrets enable -path=secret kv-v2 2>/dev/null || true
 
 DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
@@ -79,8 +88,7 @@ vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACK
 vault kv put secret/pollpear/ws path="$WS_PATH" ping_interval="$WS_PING_INTERVAL" ping_timeout="$WS_PING_TIMEOUT" max_payload="$WS_MAX_PAYLOAD"
 # secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
 # vault kv put secret/pollpear/ai/keys ml=""
-# secret/pollpear/grafana: Grafana ne lit pas Vault, désactivé
-# vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
+vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
 
 for s in $SERVICES; do
   vault policy write "$s" "$POLICY_DIR/$s.hcl"
