@@ -6,60 +6,76 @@ export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 POLICY_DIR="${POLICY_DIR:-/vault/policies}"
 APPROLE_DIR="${APPROLE_DIR:-/vault/approle}"
 
-PG_USER="${PG_USER:-pollpear}"
-PG_DB="${PG_DB:-pollpear}"
-PG_PASSWORD="${PG_PASSWORD:?PG_PASSWORD is not set in .env}"
-REDIS_PASSWORD="${REDIS_PASSWORD:?REDIS_PASSWORD is not set in .env}"
-GRAFANA_USER="${GRAFANA_USER:-admin}"
-GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
-SESSION_COOKIE_SECRET="${SESSION_COOKIE_SECRET:?SESSION_COOKIE_SECRET is not set in .env}"
-API_KEYS_PEPPER="${API_KEYS_PEPPER:?API_KEYS_PEPPER is not set in .env}"
+POSTGRES_USER="${POSTGRES_USER:-pollpear}"
+POSTGRES_DB="${POSTGRES_DB:-pollpear}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set in .env}"
+
 NESTJS_PEPPER="${NESTJS_PEPPER:?NESTJS_PEPPER is not set in .env}"
-OAUTH_42_CLIENT_ID="${OAUTH_42_CLIENT_ID:-CHANGE-ME}"
-OAUTH_42_CLIENT_SECRET="${OAUTH_42_CLIENT_SECRET:-CHANGE-ME}"
-OAUTH_42_REDIRECT_URI="${OAUTH_42_REDIRECT_URI:-https://localhost/auth/oauth/school42/callback}"
-OAUTH_GOOGLE_CLIENT_ID="${OAUTH_GOOGLE_CLIENT_ID:-CHANGE-ME}"
-OAUTH_GOOGLE_CLIENT_SECRET="${OAUTH_GOOGLE_CLIENT_SECRET:-CHANGE-ME}"
-OAUTH_GOOGLE_REDIRECT_URI="${OAUTH_GOOGLE_REDIRECT_URI:-https://localhost/auth/oauth/google/callback}"
-OAUTH_GITHUB_CLIENT_ID="${OAUTH_GITHUB_CLIENT_ID:-CHANGE-ME}"
-OAUTH_GITHUB_CLIENT_SECRET="${OAUTH_GITHUB_CLIENT_SECRET:-CHANGE-ME}"
-OAUTH_GITHUB_REDIRECT_URI="${OAUTH_GITHUB_REDIRECT_URI:-https://localhost/auth/oauth/github/callback}"
+# API_KEYS_PEPPER: pas de consommateur (secret api-keys jamais lu)
+# API_KEYS_PEPPER="${API_KEYS_PEPPER:?API_KEYS_PEPPER is not set in .env}"
+
+# GRAFANA_USER/GRAFANA_PASSWORD: Grafana lit ses creds directement depuis .env (compose.monitor.yml), pas depuis Vault
+# GRAFANA_USER="${GRAFANA_USER:-admin}"
+# GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
+
+BACKEND_URL="${BACKEND_URL:-http://backend:3000}"
+REDIS_PASSWORD="${REDIS_PASSWORD:?REDIS_PASSWORD is not set in .env}"
+
 MAIL_HOST="${MAIL_HOST:-CHANGE-ME}"
 MAIL_PORT="${MAIL_PORT:-587}"
 MAIL_USER="${MAIL_USER:-CHANGE-ME}"
 MAIL_PASS="${MAIL_PASS:-CHANGE-ME}"
 MAIL_FROM="${MAIL_FROM:-CHANGE-ME}"
-FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
-BACKEND_URL="${BACKEND_URL:-http://backend:3000}"
-GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
+
+OAUTH_42_CLIENT_ID="${OAUTH_42_CLIENT_ID:-CHANGE-ME}"
+OAUTH_42_CLIENT_SECRET="${OAUTH_42_CLIENT_SECRET:-CHANGE-ME}"
+OAUTH_42_REDIRECT_URI="${OAUTH_42_REDIRECT_URI:-https://localhost/auth/oauth/school42/callback}"
+
+OAUTH_GITHUB_CLIENT_ID="${OAUTH_GITHUB_CLIENT_ID:-CHANGE-ME}"
+OAUTH_GITHUB_CLIENT_SECRET="${OAUTH_GITHUB_CLIENT_SECRET:-CHANGE-ME}"
+OAUTH_GITHUB_REDIRECT_URI="${OAUTH_GITHUB_REDIRECT_URI:-https://localhost/auth/oauth/github/callback}"
+
+OAUTH_GOOGLE_CLIENT_ID="${OAUTH_GOOGLE_CLIENT_ID:-CHANGE-ME}"
+OAUTH_GOOGLE_CLIENT_SECRET="${OAUTH_GOOGLE_CLIENT_SECRET:-CHANGE-ME}"
+OAUTH_GOOGLE_REDIRECT_URI="${OAUTH_GOOGLE_REDIRECT_URI:-https://localhost/auth/oauth/google/callback}"
+
 GARAGE_S3_ENDPOINT="${GARAGE_S3_ENDPOINT:-http://garage:3900}"
+GARAGE_S3_URL="${GARAGE_S3_URL:-http://garage:3902}"
+GARAGE_S3_UPLOADS_HOST="${GARAGE_S3_UPLOADS_HOST:-pollpear-uploads.web.garage.localhost}"
 GARAGE_S3_REGION="${GARAGE_S3_REGION:-garage}"
 GARAGE_S3_BUCKET="${GARAGE_S3_BUCKET:-pollpear-uploads}"
 GARAGE_S3_ACCESS_KEY="${GARAGE_S3_ACCESS_KEY:-CHANGE-ME}"
 GARAGE_S3_SECRET_KEY="${GARAGE_S3_SECRET_KEY:-CHANGE-ME}"
 
-SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-grafana pollpear-prometheus pollpear-frontend"
+FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
+GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
+
+# pollpear-grafana retiré : Grafana ne fait jamais de login AppRole (image stock, creds via .env)
+SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-prometheus pollpear-frontend"
 
 until vault status >/dev/null 2>&1; do sleep 1; done
 
 vault secrets enable -path=secret kv-v2 2>/dev/null || true
 
-DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@postgres:5432/${PG_DB}?schema=public"
+DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
 
 vault kv put secret/pollpear/db \
-  host=postgres port=5432 database="$PG_DB" username="$PG_USER" \
-  password="$PG_PASSWORD" database_url="$DATABASE_URL"
+  host=postgres port=5432 database="$POSTGRES_DB" username="$POSTGRES_USER" \
+  password="$POSTGRES_PASSWORD" database_url="$DATABASE_URL"
 vault kv put secret/pollpear/redis host=redis port=6379 password="$REDIS_PASSWORD"
-vault kv put secret/pollpear/session ttl=86400 cookie_secret="$SESSION_COOKIE_SECRET" pepper="$NESTJS_PEPPER"
-vault kv put secret/pollpear/api-keys pepper="$API_KEYS_PEPPER"
+vault kv put secret/pollpear/session ttl=86400 pepper="$NESTJS_PEPPER"
+# secret/pollpear/api-keys: pas de consommateur, désactivé
+# vault kv put secret/pollpear/api-keys pepper="$API_KEYS_PEPPER"
 vault kv put secret/pollpear/oauth/google client_id="$OAUTH_GOOGLE_CLIENT_ID" client_secret="$OAUTH_GOOGLE_CLIENT_SECRET" redirect_uri="$OAUTH_GOOGLE_REDIRECT_URI"
 vault kv put secret/pollpear/oauth/github client_id="$OAUTH_GITHUB_CLIENT_ID" client_secret="$OAUTH_GITHUB_CLIENT_SECRET" redirect_uri="$OAUTH_GITHUB_REDIRECT_URI"
 vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_secret="$OAUTH_42_CLIENT_SECRET" redirect_uri="$OAUTH_42_REDIRECT_URI"
 vault kv put secret/pollpear/mail host="$MAIL_HOST" port="$MAIL_PORT" user="$MAIL_USER" pass="$MAIL_PASS" from="$MAIL_FROM"
-vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" region="$GARAGE_S3_REGION" bucket="$GARAGE_S3_BUCKET" access_key="$GARAGE_S3_ACCESS_KEY" secret_key="$GARAGE_S3_SECRET_KEY"
+vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" url="$GARAGE_S3_URL" region="$GARAGE_S3_REGION" bucket="$GARAGE_S3_BUCKET" access_key="$GARAGE_S3_ACCESS_KEY" secret_key="$GARAGE_S3_SECRET_KEY" uploads_host="$GARAGE_S3_UPLOADS_HOST"
 vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL"
-vault kv put secret/pollpear/ai/keys ml=""
-vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
+# secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
+# vault kv put secret/pollpear/ai/keys ml=""
+# secret/pollpear/grafana: Grafana ne lit pas Vault, désactivé
+# vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
 
 for s in $SERVICES; do
   vault policy write "$s" "$POLICY_DIR/$s.hcl"
