@@ -50,6 +50,11 @@ GARAGE_S3_SECRET_KEY="${GARAGE_S3_SECRET_KEY:-CHANGE-ME}"
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
 
+WS_PATH="${WS_PATH:-/ws}"
+WS_PING_INTERVAL="${WS_PING_INTERVAL:-25000}"
+WS_PING_TIMEOUT="${WS_PING_TIMEOUT:-20000}"
+WS_MAX_PAYLOAD="${WS_MAX_PAYLOAD:-1000000}"
+
 # pollpear-grafana retiré : Grafana ne fait jamais de login AppRole (image stock, creds via .env)
 SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-prometheus pollpear-frontend"
 
@@ -72,6 +77,7 @@ vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_sec
 vault kv put secret/pollpear/mail host="$MAIL_HOST" port="$MAIL_PORT" user="$MAIL_USER" pass="$MAIL_PASS" from="$MAIL_FROM"
 vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" url="$GARAGE_S3_URL" region="$GARAGE_S3_REGION" bucket="$GARAGE_S3_BUCKET" access_key="$GARAGE_S3_ACCESS_KEY" secret_key="$GARAGE_S3_SECRET_KEY" uploads_host="$GARAGE_S3_UPLOADS_HOST"
 vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL"
+vault kv put secret/pollpear/ws path="$WS_PATH" ping_interval="$WS_PING_INTERVAL" ping_timeout="$WS_PING_TIMEOUT" max_payload="$WS_MAX_PAYLOAD"
 # secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
 # vault kv put secret/pollpear/ai/keys ml=""
 # secret/pollpear/grafana: Grafana ne lit pas Vault, désactivé
