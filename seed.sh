@@ -63,7 +63,19 @@ WS_PING_INTERVAL="${WS_PING_INTERVAL:-25000}"
 WS_PING_TIMEOUT="${WS_PING_TIMEOUT:-20000}"
 WS_MAX_PAYLOAD="${WS_MAX_PAYLOAD:-1000000}"
 
-SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-postgres-exporter pollpear-grafana pollpear-garage pollpear-prometheus pollpear-frontend"
+NGINX_AUTH="${NGINX_AUTH:-off}"
+NGINX_HTPASSWD=""
+if [ "$NGINX_AUTH" != "off" ]; then
+  : "${HTPASSWD_USER:?HTPASSWD_USER is not set in .env}"
+  : "${HTPASSWD_PASSWORD:?HTPASSWD_PASSWORD is not set in .env}"
+  NGINX_HTPASSWD="${HTPASSWD_USER}:$(openssl passwd -apr1 "$HTPASSWD_PASSWORD")"
+  if [ -n "${SMOKE_USER:-}" ]; then
+    NGINX_HTPASSWD="${NGINX_HTPASSWD}
+${SMOKE_USER}:$(openssl passwd -apr1 "$SMOKE_PASSWORD")"
+  fi
+fi
+
+SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-postgres-exporter pollpear-grafana pollpear-garage pollpear-nginx pollpear-prometheus pollpear-frontend"
 
 until vault status >/dev/null 2>&1; do sleep 1; done
 
@@ -86,6 +98,7 @@ vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" url="$GARAGE_S3_U
 vault kv put secret/pollpear/garage rpc_secret="$GARAGE_RPC_SECRET" admin_token="$GARAGE_ADMIN_TOKEN"
 vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL" backend_port="$BACKEND_PORT"
 vault kv put secret/pollpear/ws path="$WS_PATH" ping_interval="$WS_PING_INTERVAL" ping_timeout="$WS_PING_TIMEOUT" max_payload="$WS_MAX_PAYLOAD"
+vault kv put secret/pollpear/nginx auth="$NGINX_AUTH" htpasswd="$NGINX_HTPASSWD"
 # secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
 # vault kv put secret/pollpear/ai/keys ml=""
 vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
