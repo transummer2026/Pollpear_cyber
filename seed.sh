@@ -11,8 +11,6 @@ POSTGRES_DB="${POSTGRES_DB:-pollpear}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set in .env}"
 
 NESTJS_PEPPER="${NESTJS_PEPPER:?NESTJS_PEPPER is not set in .env}"
-# API_KEYS_PEPPER: pas de consommateur (secret api-keys jamais lu)
-# API_KEYS_PEPPER="${API_KEYS_PEPPER:?API_KEYS_PEPPER is not set in .env}"
 
 # GRAFANA_USER/GRAFANA_PASSWORD: Grafana lit ses creds directement depuis .env (compose.monitor.yml), pas depuis Vault
 # GRAFANA_USER="${GRAFANA_USER:-admin}"
@@ -69,8 +67,6 @@ vault kv put secret/pollpear/db \
   password="$POSTGRES_PASSWORD" database_url="$DATABASE_URL"
 vault kv put secret/pollpear/redis host=redis port=6379 password="$REDIS_PASSWORD"
 vault kv put secret/pollpear/session ttl=86400 pepper="$NESTJS_PEPPER"
-# secret/pollpear/api-keys: pas de consommateur, désactivé
-# vault kv put secret/pollpear/api-keys pepper="$API_KEYS_PEPPER"
 vault kv put secret/pollpear/oauth/google client_id="$OAUTH_GOOGLE_CLIENT_ID" client_secret="$OAUTH_GOOGLE_CLIENT_SECRET" redirect_uri="$OAUTH_GOOGLE_REDIRECT_URI"
 vault kv put secret/pollpear/oauth/github client_id="$OAUTH_GITHUB_CLIENT_ID" client_secret="$OAUTH_GITHUB_CLIENT_SECRET" redirect_uri="$OAUTH_GITHUB_REDIRECT_URI"
 vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_secret="$OAUTH_42_CLIENT_SECRET" redirect_uri="$OAUTH_42_REDIRECT_URI"
