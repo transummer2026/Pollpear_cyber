@@ -17,6 +17,7 @@ NESTJS_PEPPER="${NESTJS_PEPPER:?NESTJS_PEPPER is not set in .env}"
 # GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
 
 BACKEND_URL="${BACKEND_URL:-http://backend:3000}"
+BACKEND_PORT="${BACKEND_PORT:-3000}"
 REDIS_PASSWORD="${REDIS_PASSWORD:?REDIS_PASSWORD is not set in .env}"
 
 MAIL_HOST="${MAIL_HOST:-CHANGE-ME}"
@@ -72,7 +73,7 @@ vault kv put secret/pollpear/oauth/github client_id="$OAUTH_GITHUB_CLIENT_ID" cl
 vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_secret="$OAUTH_42_CLIENT_SECRET" redirect_uri="$OAUTH_42_REDIRECT_URI"
 vault kv put secret/pollpear/mail host="$MAIL_HOST" port="$MAIL_PORT" user="$MAIL_USER" pass="$MAIL_PASS" from="$MAIL_FROM"
 vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" url="$GARAGE_S3_URL" region="$GARAGE_S3_REGION" bucket="$GARAGE_S3_BUCKET" access_key="$GARAGE_S3_ACCESS_KEY" secret_key="$GARAGE_S3_SECRET_KEY" uploads_host="$GARAGE_S3_UPLOADS_HOST"
-vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL"
+vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL" backend_port="$BACKEND_PORT"
 vault kv put secret/pollpear/ws path="$WS_PATH" ping_interval="$WS_PING_INTERVAL" ping_timeout="$WS_PING_TIMEOUT" max_payload="$WS_MAX_PAYLOAD"
 # secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
 # vault kv put secret/pollpear/ai/keys ml=""
