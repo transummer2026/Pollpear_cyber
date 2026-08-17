@@ -68,10 +68,10 @@ NGINX_HTPASSWD=""
 if [ "$NGINX_AUTH" != "off" ]; then
   : "${HTPASSWD_USER:?HTPASSWD_USER is not set in .env}"
   : "${HTPASSWD_PASSWORD:?HTPASSWD_PASSWORD is not set in .env}"
-  NGINX_HTPASSWD="${HTPASSWD_USER}:$(openssl passwd -apr1 "$HTPASSWD_PASSWORD")"
+  NGINX_HTPASSWD="$(htpasswd -Bbn "$HTPASSWD_USER" "$HTPASSWD_PASSWORD")"
   if [ -n "${SMOKE_USER:-}" ]; then
     NGINX_HTPASSWD="${NGINX_HTPASSWD}
-${SMOKE_USER}:$(openssl passwd -apr1 "$SMOKE_PASSWORD")"
+$(htpasswd -Bbn "$SMOKE_USER" "$SMOKE_PASSWORD")"
   fi
 fi
 
