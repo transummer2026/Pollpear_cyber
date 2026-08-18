@@ -8,7 +8,7 @@ if [ -f "$DOTENV_FILE" ]; then
   set +a
 fi
 
-export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 export VAULT_TOKEN="${VAULT_TOKEN:-${VAULT_ROOT_TOKEN:-${VAULT_DEV_ROOT_TOKEN_ID:-}}}"
 : "${VAULT_TOKEN:?VAULT_TOKEN requis}"
 POLICY_DIR="${POLICY_DIR:-/vault/policies}"
