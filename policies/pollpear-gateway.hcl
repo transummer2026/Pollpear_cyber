@@ -4,3 +4,4 @@ path "secret/data/pollpear/session"  { capabilities = ["read"] }
 path "secret/data/pollpear/s3"       { capabilities = ["read"] }
 path "secret/data/pollpear/app"      { capabilities = ["read"] }
 path "secret/data/pollpear/s3"       { capabilities = ["read"] }
+path "secret/data/pollpear/ws"       { capabilities = ["read"] }
