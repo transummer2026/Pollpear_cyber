@@ -6,6 +6,7 @@ ENV VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
 WORKDIR /vault
 
 USER root
+RUN apk add --no-cache apache2-utils
 RUN mkdir -p approle config-prod policies \
  && chown -R vault:vault /vault
 

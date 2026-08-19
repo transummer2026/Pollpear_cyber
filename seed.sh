@@ -1,7 +1,15 @@
 #!/bin/sh
 set -eu
 
+DOTENV_FILE="${DOTENV_FILE:-/run/secrets/dotenv}"
+if [ -f "$DOTENV_FILE" ]; then
+  set -a
+  . "$DOTENV_FILE"
+  set +a
+fi
+
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
+export VAULT_TOKEN="${VAULT_TOKEN:-${VAULT_ROOT_TOKEN:-${VAULT_DEV_ROOT_TOKEN_ID:-}}}"
 : "${VAULT_TOKEN:?VAULT_TOKEN requis}"
 POLICY_DIR="${POLICY_DIR:-/vault/policies}"
 APPROLE_DIR="${APPROLE_DIR:-/vault/approle}"
@@ -12,9 +20,8 @@ POSTGRES_PASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set in .env}"
 
 NESTJS_PEPPER="${NESTJS_PEPPER:?NESTJS_PEPPER is not set in .env}"
 
-# GRAFANA_USER/GRAFANA_PASSWORD: Grafana lit ses creds directement depuis .env (compose.monitor.yml), pas depuis Vault
-# GRAFANA_USER="${GRAFANA_USER:-admin}"
-# GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
+GRAFANA_USER="${GRAFANA_USER:-admin}"
+GRAFANA_PASSWORD="${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is not set in .env}"
 
 BACKEND_URL="${BACKEND_URL:-http://backend:3000}"
 BACKEND_PORT="${BACKEND_PORT:-3000}"
@@ -45,6 +52,8 @@ GARAGE_S3_REGION="${GARAGE_S3_REGION:-garage}"
 GARAGE_S3_BUCKET="${GARAGE_S3_BUCKET:-pollpear-uploads}"
 GARAGE_S3_ACCESS_KEY="${GARAGE_S3_ACCESS_KEY:-CHANGE-ME}"
 GARAGE_S3_SECRET_KEY="${GARAGE_S3_SECRET_KEY:-CHANGE-ME}"
+GARAGE_RPC_SECRET="${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is not set in .env}"
+GARAGE_ADMIN_TOKEN="${GARAGE_ADMIN_TOKEN:?GARAGE_ADMIN_TOKEN is not set in .env}"
 
 FRONTEND_URL="${FRONTEND_URL:-http://localhost:5173}"
 GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
@@ -54,10 +63,23 @@ WS_PING_INTERVAL="${WS_PING_INTERVAL:-25000}"
 WS_PING_TIMEOUT="${WS_PING_TIMEOUT:-20000}"
 WS_MAX_PAYLOAD="${WS_MAX_PAYLOAD:-1000000}"
 
-# pollpear-grafana retiré : Grafana ne fait jamais de login AppRole (image stock, creds via .env)
-SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-prometheus pollpear-frontend"
+NGINX_AUTH="${NGINX_AUTH:-off}"
+NGINX_HTPASSWD=""
+if [ "$NGINX_AUTH" != "off" ]; then
+  : "${HTPASSWD_USER:?HTPASSWD_USER is not set in .env}"
+  : "${HTPASSWD_PASSWORD:?HTPASSWD_PASSWORD is not set in .env}"
+  NGINX_HTPASSWD="$(htpasswd -Bbn "$HTPASSWD_USER" "$HTPASSWD_PASSWORD")"
+  if [ -n "${SMOKE_USER:-}" ]; then
+    NGINX_HTPASSWD="${NGINX_HTPASSWD}
+$(htpasswd -Bbn "$SMOKE_USER" "$SMOKE_PASSWORD")"
+  fi
+fi
+
+SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-postgres-exporter pollpear-grafana pollpear-garage pollpear-nginx pollpear-prometheus pollpear-frontend"
 
 until vault status >/dev/null 2>&1; do sleep 1; done
+
+vault audit list 2>/dev/null | grep -q 'file/' || vault audit enable file file_path=/vault/logs/audit.log
 
 vault secrets enable -path=secret kv-v2 2>/dev/null || true
 
@@ -73,12 +95,13 @@ vault kv put secret/pollpear/oauth/github client_id="$OAUTH_GITHUB_CLIENT_ID" cl
 vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_secret="$OAUTH_42_CLIENT_SECRET" redirect_uri="$OAUTH_42_REDIRECT_URI"
 vault kv put secret/pollpear/mail host="$MAIL_HOST" port="$MAIL_PORT" user="$MAIL_USER" pass="$MAIL_PASS" from="$MAIL_FROM"
 vault kv put secret/pollpear/s3 endpoint="$GARAGE_S3_ENDPOINT" url="$GARAGE_S3_URL" region="$GARAGE_S3_REGION" bucket="$GARAGE_S3_BUCKET" access_key="$GARAGE_S3_ACCESS_KEY" secret_key="$GARAGE_S3_SECRET_KEY" uploads_host="$GARAGE_S3_UPLOADS_HOST"
+vault kv put secret/pollpear/garage rpc_secret="$GARAGE_RPC_SECRET" admin_token="$GARAGE_ADMIN_TOKEN"
 vault kv put secret/pollpear/app frontend_url="$FRONTEND_URL" backend_url="$BACKEND_URL" gateway_url="$GATEWAY_URL" backend_port="$BACKEND_PORT"
 vault kv put secret/pollpear/ws path="$WS_PATH" ping_interval="$WS_PING_INTERVAL" ping_timeout="$WS_PING_TIMEOUT" max_payload="$WS_MAX_PAYLOAD"
+vault kv put secret/pollpear/nginx auth="$NGINX_AUTH" htpasswd="$NGINX_HTPASSWD"
 # secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
 # vault kv put secret/pollpear/ai/keys ml=""
-# secret/pollpear/grafana: Grafana ne lit pas Vault, désactivé
-# vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
+vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
 
 for s in $SERVICES; do
   vault policy write "$s" "$POLICY_DIR/$s.hcl"
