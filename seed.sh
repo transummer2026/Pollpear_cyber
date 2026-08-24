@@ -27,6 +27,9 @@ BACKEND_URL="${BACKEND_URL:-http://backend:3000}"
 BACKEND_PORT="${BACKEND_PORT:-3000}"
 REDIS_PASSWORD="${REDIS_PASSWORD:?REDIS_PASSWORD is not set in .env}"
 
+RATE_LIMIT="${RATE_LIMIT:-100}"
+RATE_LIMIT_WINDOW_SECONDS="${RATE_LIMIT_WINDOW_SECONDS:-60}"
+
 MAIL_HOST="${MAIL_HOST:-CHANGE-ME}"
 MAIL_PORT="${MAIL_PORT:-587}"
 MAIL_USER="${MAIL_USER:-CHANGE-ME}"
@@ -181,6 +184,7 @@ vault kv put secret/pollpear/db \
   password="$POSTGRES_PASSWORD" database_url="$DATABASE_URL"
 vault kv put secret/pollpear/redis host=redis port=6379 password="$REDIS_PASSWORD"
 vault kv put secret/pollpear/session ttl=86400 pepper="$NESTJS_PEPPER"
+vault kv put secret/pollpear/rate_limit limit="$RATE_LIMIT" window_seconds="$RATE_LIMIT_WINDOW_SECONDS"
 vault kv put secret/pollpear/oauth/google client_id="$OAUTH_GOOGLE_CLIENT_ID" client_secret="$OAUTH_GOOGLE_CLIENT_SECRET" redirect_uri="$OAUTH_GOOGLE_REDIRECT_URI"
 vault kv put secret/pollpear/oauth/github client_id="$OAUTH_GITHUB_CLIENT_ID" client_secret="$OAUTH_GITHUB_CLIENT_SECRET" redirect_uri="$OAUTH_GITHUB_REDIRECT_URI"
 vault kv put secret/pollpear/oauth/42 client_id="$OAUTH_42_CLIENT_ID" client_secret="$OAUTH_42_CLIENT_SECRET" redirect_uri="$OAUTH_42_REDIRECT_URI"
