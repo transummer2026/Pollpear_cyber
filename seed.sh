@@ -80,7 +80,7 @@ fi
 
 ACCESSLOG="${ACCESSLOG:-/var/log/nginx/access.log}"
 ALLOWED_HTTP_VERSIONS="${ALLOWED_HTTP_VERSIONS:-HTTP/1.0 HTTP/1.1 HTTP/2 HTTP/2.0}"
-ALLOWED_METHODS="${ALLOWED_METHODS:-GET HEAD POST OPTIONS}"
+ALLOWED_METHODS="${ALLOWED_METHODS:-GET HEAD POST PUT PATCH DELETE OPTIONS}"
 ALLOWED_REQUEST_CONTENT_TYPE="${ALLOWED_REQUEST_CONTENT_TYPE:-|application/x-www-form-urlencoded| |multipart/form-data| |multipart/related| |text/xml| |application/xml| |application/soap+xml| |application/json| |application/cloudevents+json| |application/cloudevents-batch+json|}"
 ALLOWED_REQUEST_CONTENT_TYPE_CHARSET="${ALLOWED_REQUEST_CONTENT_TYPE_CHARSET:-|utf-8| |iso-8859-1| |iso-8859-15| |windows-1252|}"
 ANOMALY_INBOUND="${ANOMALY_INBOUND:-5}"
