@@ -1,6 +1,16 @@
 #!/bin/sh
+# Vault seed script - runs once when the stack starts.
+# It fills the KV store with every service secret, writes one least-privilege
+# policy per service, and provisions one AppRole per service so each container can
+# authenticate to Vault without sharing the root token. Configuration is read from
+# the environment (optionally from a mounted dotenv file); required values fail fast.
+#
+# Fail fast: exit on any error (-e) and on any unset variable (-u).
 set -eu
 
+# Load configuration from a mounted dotenv file (a Docker secret by default).
+# `set -a` auto-exports every variable defined while the file is sourced, so the
+# `vault` calls below inherit them; `set +a` restores the default afterwards.
 DOTENV_FILE="${DOTENV_FILE:-/run/secrets/dotenv}"
 if [ -f "$DOTENV_FILE" ]; then
   set -a
@@ -8,12 +18,18 @@ if [ -f "$DOTENV_FILE" ]; then
   set +a
 fi
 
+# Accept the Vault token under any of the names the different environments use
+# (VAULT_TOKEN, then VAULT_ROOT_TOKEN, then VAULT_DEV_ROOT_TOKEN_ID) and abort with
+# a clear message if none is set.
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 export VAULT_TOKEN="${VAULT_TOKEN:-${VAULT_ROOT_TOKEN:-${VAULT_DEV_ROOT_TOKEN_ID:-}}}"
 : "${VAULT_TOKEN:?VAULT_TOKEN requis}"
 POLICY_DIR="${POLICY_DIR:-/vault/policies}"
 APPROLE_DIR="${APPROLE_DIR:-/vault/approle}"
 
+# Service configuration read from the environment. `${VAR:-default}` supplies a
+# development default; `${VAR:?message}` makes a genuinely secret value mandatory
+# and aborts the seed when it is missing.
 POSTGRES_USER="${POSTGRES_USER:-pollpear}"
 POSTGRES_DB="${POSTGRES_DB:-pollpear}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set in .env}"
@@ -67,6 +83,10 @@ WS_PING_INTERVAL="${WS_PING_INTERVAL:-25000}"
 WS_PING_TIMEOUT="${WS_PING_TIMEOUT:-20000}"
 WS_MAX_PAYLOAD="${WS_MAX_PAYLOAD:-1000000}"
 
+# Optional HTTP basic-auth in front of nginx. When enabled, build a bcrypt htpasswd
+# entry (htpasswd -Bbn) for the main user, and append a second line for the
+# smoke-test user when one is provided. The resulting multi-line value is stored
+# verbatim in Vault further down.
 NGINX_AUTH="${NGINX_AUTH:-off}"
 NGINX_HTPASSWD=""
 if [ "$NGINX_AUTH" != "off" ]; then
@@ -79,6 +99,8 @@ $(htpasswd -Bbn "$SMOKE_USER" "$SMOKE_PASSWORD")"
   fi
 fi
 
+# ModSecurity / OWASP CRS WAF tuning for the nginx front. Every knob has a safe
+# default here and is passed to the nginx container via the secret written below.
 ACCESSLOG="${ACCESSLOG:-/var/log/nginx/access.log}"
 ALLOWED_HTTP_VERSIONS="${ALLOWED_HTTP_VERSIONS:-HTTP/1.0 HTTP/1.1 HTTP/2 HTTP/2.0}"
 ALLOWED_METHODS="${ALLOWED_METHODS:-GET HEAD POST PUT PATCH DELETE OPTIONS}"
@@ -174,16 +196,24 @@ TOTAL_ARG_LENGTH="${TOTAL_ARG_LENGTH:-131072}"
 VALIDATE_UTF8_ENCODING="${VALIDATE_UTF8_ENCODING:-1}"
 WORKER_CONNECTIONS="${WORKER_CONNECTIONS:-1024}"
 
+# Every service that gets a policy and an AppRole below. Order does not matter.
 SERVICES="pollpear-backend pollpear-gateway pollpear-ai pollpear-postgres pollpear-redis pollpear-redis-exporter pollpear-postgres-exporter pollpear-grafana pollpear-garage pollpear-nginx pollpear-prometheus pollpear-frontend"
 
+# Wait for the Vault server to be reachable and unsealed before seeding.
 until vault status >/dev/null 2>&1; do sleep 1; done
 
+# Enable file audit logging once; the grep guard keeps re-runs idempotent.
 vault audit list 2>/dev/null | grep -q 'file/' || vault audit enable file file_path=/vault/logs/audit.log
 
+# Mount the KV v2 secrets engine at secret/; `|| true` ignores the
+# "already enabled" error on re-runs.
 vault secrets enable -path=secret kv-v2 2>/dev/null || true
 
+# Precompute a ready-to-use connection string so consumers don't have to reassemble
+# it from the individual db fields.
 DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public"
 
+# Write every application secret into the KV store, one logical group per path.
 vault kv put secret/pollpear/db \
   host=postgres port=5432 database="$POSTGRES_DB" username="$POSTGRES_USER" \
   password="$POSTGRES_PASSWORD" database_url="$DATABASE_URL"
@@ -294,16 +324,25 @@ vault kv put secret/pollpear/waf \
   TOTAL_ARG_LENGTH="$TOTAL_ARG_LENGTH" \
   VALIDATE_UTF8_ENCODING="$VALIDATE_UTF8_ENCODING" \
   WORKER_CONNECTIONS="$WORKER_CONNECTIONS"
-# secret/pollpear/ai/keys: aucun consommateur dans Pollpear_ai pour l'instant, désactivé
+# secret/pollpear/ai/keys: no consumer in Pollpear_ai yet, so this write is left disabled.
 # vault kv put secret/pollpear/ai/keys ml=""
 vault kv put secret/pollpear/grafana admin_user="$GRAFANA_USER" admin_password="$GRAFANA_PASSWORD"
 
+# Register each service's least-privilege policy from policies/<service>.hcl.
 for s in $SERVICES; do
   vault policy write "$s" "$POLICY_DIR/$s.hcl"
 done
 
+# Enable AppRole auth so services log in with a role_id + secret_id pair instead of
+# the root token; `|| true` keeps re-runs idempotent.
 vault auth enable approle 2>/dev/null || true
 mkdir -p "$APPROLE_DIR"
+# For each service, create its AppRole and issue login credentials:
+#  - token_ttl / token_max_ttl bound the lifetime of tokens minted at login;
+#  - secret_id_ttl=0 and secret_id_num_uses=0 make the secret_id non-expiring and
+#    unlimited-use (simpler for long-running containers, at the cost of rotation);
+#  - the role_id and secret_id are written to a shared volume so each service can
+#    authenticate on startup.
 for s in $SERVICES; do
   vault write "auth/approle/role/$s" \
     token_policies="$s" token_ttl=1h token_max_ttl=4h \
